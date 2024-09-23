@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - microservices-net
+
+  orderservice:
+    build:
+      context: ./
+      dockerfile: Dockerfile2
+    container_name: orderservice
+    ports:
+      - "8080:8080"
+    depends_on:
+      - rabbitmq
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - RabbitMqOptions__Host=rabbitmq
+      - RabbitMqOptions__Port=5672
+      - RabbitMqOptions__User=guest
+      - RabbitMqOptions__Pass=guest
+      - RabbitMqOptions__VHost=/
+      - RabbitMqOptions__UseSsl=false
+      - ApiKey=super_secure_key
+    networks:
+      - microservices-net
+
+  notificationservice:
+    build:
+      context: ./
+      dockerfile: Dockerfile1
+    container_name: notificationservice
+    depends_on:
+      - rabbitmq
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - RabbitMqOptions__Host=rabbitmq
+      - RabbitMqOptions__Port=5672
+      - RabbitMqOptions__User=guest
+      - RabbitMqOptions__Pass=guest
+      - RabbitMqOptions__VHost=/
+      - RabbitMqOptions__UseSsl=false
+    networks:
+      - microservices-net
+
+networks:
+  microservices-net:
+    driver: bridge
