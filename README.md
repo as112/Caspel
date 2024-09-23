@@ -6,9 +6,9 @@
 
 Проект состоит из следующих микросервисов:
 
-- **Order Service**: Управляет созданием и получением заказов.
-- **Notification Service**: Отправляет уведомления о новых заказах.
-- **RabbitMQ**: Шина сообщений для обработки событий.
+- **Order Service**: Управляет созданием и получением заказов. Отправляет уведомления о созданных заказах в очередь.
+- **Notification Service**: Принимает сообщения из очереди. Отправляет уведомления о новых заказах по email (имитация в консоль).
+- **RabbitMQ**: Шина сообщений для обработки событий. Настроен один обменник типа `fanout` и одна очередь.
 
 ## Установка и запуск
 
@@ -34,11 +34,102 @@ docker-compose up --build
 Это создаст и запустит все необходимые контейнеры: `orderservice`, `notificationservice` и `rabbitmq`.
 
 ### 4. Проверка работы API
-После успешного запуска микросервисов вы можете протестировать API. Например, для получения всех заказов используйте следующий запрос:
-```bash
-curl -X GET http://localhost:8080/api/get-orders -H "x-api-key: your_api_key_here"
+После успешного запуска микросервисов вы можете протестировать API. Для этого лучше использовать `Postman`
+- Откройте Postman.
+- Выберите метод GET.
+- Вставьте ваш URL в поле запроса, например, `http://localhost:8080/api/get-orders`
+- Перейдите на вкладку Headers и добавьте заголовок:
+  - `Key: x-api-key`
+  - `Value: secure_key`
+- Нажмите Send для выполнения запроса.
+
+# Order Management API
+Base URL:
+`http://localhost:8080/api`
+
+Authentication
+API использует API Key для аутентификации. Ключ необходимо передавать в заголовке x-api-key для всех запросов.
+
+Пример заголовка:
 ```
-В окружении `Developement` доступен `swagger`:
-```bash
-curl -X GET http://localhost:8080/swagger -H "x-api-key: your_api_key_here"
+x-api-key: your_api_key
 ```
+## Endpoints
+### 1. Создание заказа:
+- URL: `/create-order`
+- Метод: `POST`
+- Описание: Создает новый заказ и публикует событие в RabbitMQ.
+- Тело запроса:
+```
+{
+  "productName": "string",
+  "quantity": 1
+}
+```
+- Пример запроса:
+```
+curl -X POST http://localhost:8080/create-order \
+  -H "x-api-key: your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{"productName": "Widget", "quantity": 10}'
+```
+
+Ответ:
+`200 OK`: Возвращает идентификатор созданного заказа.
+
+Пример успешного ответа:
+```
+{
+  "id": "e7d2b1c3-dcbc-44c7-91fc-2d66c9a72b2e"
+}
+```
+
+### 2. Получить заказ по ID
+- URL: `/get-order/{id}`
+- Метод: `GET`
+- Описание: Возвращает данные о заказе по его идентификатору.
+- Пример запроса:
+
+```
+curl -X GET http://localhost:8080/get-order/e7d2b1c3-dcbc-44c7-91fc-2d66c9a72b2e \
+  -H "x-api-key: your_api_key"
+```
+Ответы:
+- `200 OK`: Возвращает данные заказа.
+```
+{
+  "id": "e7d2b1c3-dcbc-44c7-91fc-2d66c9a72b2e",
+  "productName": "Widget",
+  "quantity": 10,
+  "createdAt": "2024-09-23T18:25:43.511Z"
+}
+```
+- `404 Not Found`: Заказ не найден.
+
+### 3. Получить все заказы
+- URL: `/get-orders`
+- Метод: `GET`
+- Описание: Возвращает список всех заказов.
+- Пример запроса:
+```
+curl -X GET http://localhost:8080/get-orders \
+  -H "x-api-key: your_api_key"
+```
+- Ответы:
+- `200 OK`: Возвращает массив заказов.
+```
+[
+  {
+    "id": "e7d2b1c3-dcbc-44c7-91fc-2d66c9a72b2e",
+    "productName": "Pasta",
+    "quantity": 2,
+    "createdAt": "2024-09-23T18:25:43.511Z"
+  }
+]
+```
+- `404 Not Found`: Заказы не найдены.
+
+## Ошибки
+- `401 Unauthorized`: Отсутствует или неверный API Key.
+- `404 Not Found`: Ресурс не найден.
+- `500 Internal Server Error`: Ошибка на стороне сервера.
