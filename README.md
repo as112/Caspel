@@ -69,14 +69,15 @@ curl -X POST http://localhost:8080/create-order \
 
 Ответы:
 - `200 OK`: Возвращает идентификатор созданного заказа.
-- `500 Internal server error`: Не удалось сохранить заказ.
-
 Пример успешного ответа:
 ```
 {
   "id": "e7d2b1c3-dcbc-44c7-91fc-2d66c9a72b2e"
 }
 ```
+- `500 Internal server error`: Не удалось сохранить заказ.
+
+
 
 ### 2. Получить заказ по ID
 - URL: `/get-order/{id}`
